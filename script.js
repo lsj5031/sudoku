@@ -4,6 +4,7 @@ let showingCandidates = false;
 let originalPuzzle = null;
 let solverStartTime = 0;
 const SOLVER_TIMEOUT = 5000;
+let bannedCandidates = new Map(); // Key: "r,c", Value: Set(values)
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeGrid();
@@ -98,10 +99,16 @@ function setupEventListeners() {
     document.getElementById('btn-check').addEventListener('click', checkRules);
     document.getElementById('btn-solve').addEventListener('click', checkSolution);
     document.getElementById('btn-lock').addEventListener('click', lockPuzzle);
-    document.getElementById('btn-clear').addEventListener('click', clearGrid);
+    document.getElementById('btn-clear').addEventListener('click', () => {
+        clearGrid();
+        bannedCandidates.clear();
+        currentHint = null;
+    });
     
     document.getElementById('btn-export').addEventListener('click', exportGrid);
-    document.getElementById('btn-import').addEventListener('click', () => document.getElementById('importFile').click());
+    document.getElementById('btn-import').addEventListener('click', () => {
+        document.getElementById('importFile').click();
+    });
     document.getElementById('btn-share').addEventListener('click', shareViaURL);
     document.getElementById('btn-load-url').addEventListener('click', loadFromURL);
     
@@ -182,8 +189,11 @@ function showMessage(content, type = "info") {
 function getCandidates(grid, row, col) {
     if (grid[row][col] !== 0) return [];
     const candidates = [];
+    const key = `${row},${col}`;
+    const banned = bannedCandidates.get(key) || new Set();
+    
     for (let num = 1; num <= 9; num++) {
-        if (isValidPlacement(grid, row, col, num)) candidates.push(num);
+        if (!banned.has(num) && isValidPlacement(grid, row, col, num)) candidates.push(num);
     }
     return candidates;
 }
@@ -252,6 +262,8 @@ function showAllCandidates() {
 
 function generateNewGame() {
     clearGrid();
+    bannedCandidates.clear();
+    currentHint = null;
     showMessage("Generating new puzzle...", "info");
     
     // Allow UI to update before heavy lifting
@@ -658,13 +670,39 @@ function applyHint() {
   
   if (currentHint.type.includes("single")) {
      const input = document.querySelector(`input[data-row="${currentHint.row}"][data-col="${currentHint.col}"]`);
+     // Set value
      input.value = currentHint.value;
+     
+     // Visuals
      input.classList.add("solved", "pop-in");
+     input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+     
+     // Trigger input event
+     input.dispatchEvent(new Event('input', { bubbles: true }));
+     
      showMessage(`Applied: ${currentHint.value}`, "success");
      currentHint = null;
      clearHighlights();
+  } else if (currentHint.eliminations) {
+     // Apply eliminations to state
+     let count = 0;
+     currentHint.eliminations.forEach(e => {
+         const key = `${e.row},${e.col}`;
+         if (!bannedCandidates.has(key)) bannedCandidates.set(key, new Set());
+         bannedCandidates.get(key).add(currentHint.value);
+         count++;
+     });
+     
+     // Visual update if candidates are showing
+     if (showingCandidates) showAllCandidates();
+     
+     showMessage(`Eliminated candidate ${currentHint.value} from ${count} cells.`, "success");
+     currentHint = null;
+     clearHighlights();
   } else {
-     showMessage("This is an elimination hint. Mentally remove the highlighted candidates.", "info");
+     showMessage("Hint applied.", "info");
+     currentHint = null;
+     clearHighlights();
   }
 }
 

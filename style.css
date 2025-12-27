@@ -209,6 +209,7 @@ button.secondary:hover {
 
 /* --- Components: Upload Area --- */
 .upload-box {
+  display: none;
   border: 1px dashed var(--muted-foreground);
   padding: 3rem 2rem;
   text-align: center;
@@ -361,9 +362,8 @@ input {
   padding: 0;
   margin: 0;
   transition: all 0.2s ease-out;
-  opacity: 0;
-  /* Hidden by default for load animation */
-  animation: appear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* opacity: 0; REMOVED to prevent vanishing when animation is swapped */
+  animation: appear 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 input:focus {
@@ -510,16 +510,102 @@ footer {
   animation: inputPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   :root {
-    --cell-size: 9vw;
+    --cell-size: min(9vw, 42px);
+    /* Cap size so it doesn't get huge on tablets, but fits mobile */
   }
 
   h1 {
     font-size: 3rem;
   }
 
+  p.subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  header,
+  footer {
+    display: none !important;
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 0.5rem;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .sudoku-container {
+    order: -1;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Stack button groups more densely on mobile if needed */
+  .button-group {
+    gap: 0.5rem;
+  }
+
+  button,
+  select {
+    padding: 0.75rem 0.25rem;
+    font-size: 0.8rem;
+    /* Slightly larger text for readability */
+  }
+
+  /* Prevent iOS zoom on inputs */
+  select,
+  input[type="text"],
+  input[type="number"] {
+    font-size: 16px !important;
+  }
+
+  /* Adjust Sudoku Grid Borders for smaller screens */
+  table {
+    border-width: 2px;
+  }
+
+  td:nth-child(3n) {
+    border-right-width: 2px;
+  }
+
+  tr:nth-child(3n) td {
+    border-bottom-width: 2px;
+  }
+
+  /* Candidates become very small */
+  .candidates {
+    font-size: 8px;
+    line-height: 1;
+  }
+}
+
+@media (max-width: 400px) {
+  :root {
+    /* Maximize space on very small screens */
+    --container-max: 100%;
+  }
+
+  main {
+    padding: 0 0.5rem;
+  }
+
   header {
+    padding: 1.5rem 0.5rem;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+  }
+
+  .upload-box {
     padding: 2rem 1rem;
   }
+
+  /* Stack buttons in single column if titles are long? 
+     For now, 2-col is usually okay, but let's be safe. */
 }
