@@ -31,8 +31,14 @@ function initializeGrid() {
             // Staggered Animation
             input.style.animationDelay = `${(i * 9 + j) * 15}ms`;
 
-            // Keyboard Navigation
-            input.addEventListener('keydown', (e) => handleKeyNavigation(e, i, j));
+            // Keyboard Navigation & Overwrite
+            input.addEventListener('keydown', (e) => {
+                if(e.target.readOnly) return;
+                if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    e.target.value = '';
+                }
+                handleKeyNavigation(e, i, j);
+            });
 
             // Input Handling
             input.addEventListener("input", function() {
@@ -110,7 +116,7 @@ function setupEventListeners() {
         document.getElementById('importFile').click();
     });
     document.getElementById('btn-share').addEventListener('click', shareViaURL);
-    document.getElementById('btn-load-url').addEventListener('click', loadFromURL);
+    // document.getElementById('btn-load-url').addEventListener('click', loadFromURL);
     
     document.getElementById('importFile').addEventListener('change', (e) => {
         if (e.target.files.length) handleImport(e.target.files[0]);
@@ -868,16 +874,7 @@ function clearGrid() {
     showMessage("Grid cleared. Start fresh!");
 }
 
-function handleImage(file) {
-    // Keeping simple for now
-    if(file.size > 2*1024*1024) { showMessage("Image too large (>2MB)", "error"); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-        document.getElementById("uploadedImage").src = e.target.result;
-        document.getElementById("uploadedImage").style.display = "block";
-    };
-    reader.readAsDataURL(file);
-}
+// Image handling removed as UI is hidden
 
 // --- Import/Export/Share ---
 
@@ -936,19 +933,51 @@ function loadFromURL() {
             const str = atob(p.replace(/-/g, '+').replace(/_/g, '/'));
             if(str.length === 81) {
                 const grid = [];
+                let clueCount = 0;
                 for(let i=0; i<9; i++) {
                     const row = [];
                     for(let j=0; j<9; j++) {
                         const val = parseInt(str[i*9+j]);
-                        row.push(isNaN(val)?0:val);
+                        if(!isNaN(val) && val > 0) {
+                            row.push(val);
+                            clueCount++;
+                        } else {
+                            row.push(0);
+                        }
                     }
                     grid.push(row);
                 }
+                
+                // Validate Integrity
+                if (clueCount < 17) {
+                    showMessage("Loaded puzzle is invalid (fewer than 17 clues).", "error");
+                    setGrid(grid); // Show it anyway so they can edit
+                    return;
+                }
+                
+                if (!solvePuzzle(grid)) {
+                     showMessage("Loaded puzzle has no valid solution.", "error");
+                     setGrid(grid);
+                     return;
+                }
+                
+                // Success: Load and Lock
                 setGrid(grid);
-                showMessage("Loaded puzzle from URL.", "success");
+                originalPuzzle = grid.map(r => r.slice());
+                
+                // Lock cells visually and functionally
+                document.querySelectorAll("input").forEach(input => {
+                    if(input.value) {
+                        input.classList.add("locked");
+                        input.readOnly = true;
+                    }
+                });
+                
+                showMessage("Loaded and verified puzzle from URL.", "success");
             }
         } catch(e) {
             console.error(e);
+            showMessage("Failed to load puzzle from URL.", "error");
         }
     }
 }
