@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
+/* Font loaded in HTML for performance */
 
 :root {
   /* --- Minimalist Monochrome Palette --- */
@@ -16,8 +16,9 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* --- Spacing & Layout --- */
-  --container-max: 72rem;
-  --cell-size: 50px;
+  --container-max: 75rem;
+  /* Slightly wider to accommodate bigger grid */
+  --cell-size: 64px;
 
   /* --- Borders (No Radius) --- */
   --radius: 0px;
@@ -114,6 +115,8 @@ main {
   main {
     grid-template-columns: 350px 1fr;
     align-items: start;
+    justify-items: center;
+    /* Center grid in its column */
   }
 }
 
@@ -123,10 +126,11 @@ main {
   border: var(--border-thin);
   padding: 1.5rem;
   margin-bottom: 2rem;
-  transition: transform 0.2s;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   /* Ensure card sits above background lines */
   position: relative;
   z-index: 1;
+  width: 100%;
 }
 
 /* --- Components: Buttons --- */
@@ -136,7 +140,8 @@ main {
   gap: 0.5rem;
 }
 
-button {
+button,
+select {
   width: 100%;
   cursor: pointer;
   font-family: var(--font-mono);
@@ -147,15 +152,20 @@ button {
   border: var(--border-medium);
   background: transparent;
   color: var(--foreground);
-  transition: all 0ms;
-  /* Instant transition */
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Natural transition */
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-button:focus-visible {
+button:active {
+  transform: scale(0.98);
+}
+
+button:focus-visible,
+select:focus-visible {
   outline: 3px solid var(--foreground);
   outline-offset: 3px;
 }
@@ -316,6 +326,8 @@ td {
   border: 1px solid #CCCCCC;
   padding: 0;
   position: relative;
+  transition: background-color 0.4s ease;
+  /* Smooth background fade */
 }
 
 /* Major Grid Lines (3x3) */
@@ -348,12 +360,20 @@ input {
   border-radius: 0;
   padding: 0;
   margin: 0;
+  transition: all 0.2s ease-out;
+  opacity: 0;
+  /* Hidden by default for load animation */
+  animation: appear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 input:focus {
   outline: none;
   background: var(--foreground);
   color: var(--background);
+  transform: scale(1.05);
+  /* Subtle pop on focus */
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Cell States */
@@ -369,6 +389,7 @@ input.locked {
 input.solved {
   font-weight: 700;
   color: var(--foreground);
+  animation: inputPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 input.hint {
@@ -381,6 +402,7 @@ input.incorrect {
   background: var(--foreground) !important;
   color: var(--background);
   text-decoration: line-through;
+  animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 input.related {
@@ -398,6 +420,7 @@ input.related {
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--muted-foreground);
+  animation: fadeIn 0.3s ease;
 }
 
 .candidates span {
@@ -425,25 +448,66 @@ footer {
 /* Animations */
 @keyframes shake {
 
-  0%,
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes inputPop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
   100% {
-    transform: translateX(0);
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
 
-  25% {
-    transform: translateX(-4px);
-  }
-
-  75% {
-    transform: translateX(4px);
+  to {
+    opacity: 1;
   }
 }
 
 .pop-in {
-  /* Instant inverted flash for feedback */
-  background: var(--foreground) !important;
-  color: var(--background) !important;
-  transition: none;
+  animation: inputPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @media (max-width: 600px) {

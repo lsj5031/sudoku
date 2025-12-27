@@ -26,6 +26,9 @@ function initializeGrid() {
             input.dataset.row = i;
             input.dataset.col = j;
             input.autocomplete = "off";
+            
+            // Staggered Animation
+            input.style.animationDelay = `${(i * 9 + j) * 15}ms`;
 
             // Keyboard Navigation
             input.addEventListener('keydown', (e) => handleKeyNavigation(e, i, j));
@@ -105,6 +108,8 @@ function setupEventListeners() {
     document.getElementById('importFile').addEventListener('change', (e) => {
         if (e.target.files.length) handleImport(e.target.files[0]);
     });
+    
+    document.getElementById('btn-generate').addEventListener('click', generateNewGame);
     
     setupImageUpload();
 }
@@ -241,6 +246,112 @@ function showAllCandidates() {
             }
         }
     }
+}
+
+// --- Generator Functions ---
+
+function generateNewGame() {
+    clearGrid();
+    showMessage("Generating new puzzle...", "info");
+    
+    // Allow UI to update before heavy lifting
+    setTimeout(() => {
+        const fullGrid = generateFullGrid();
+        if(!fullGrid) {
+             showMessage("Generation failed. Try again.", "error"); 
+             return;
+        }
+        
+        const difficulty = parseInt(document.getElementById('diff-select').value) || 1;
+        // Map difficulty to cells removed
+        // Easy(1): 30, Medium(2): 40, Hard(3): 50, Expert(4): 55, Master(5): 60 (approx)
+        const toRemove = [30, 40, 50, 55, 60][difficulty - 1];
+        
+        const puzzle = removeCells(fullGrid, toRemove);
+        
+        setGrid(puzzle);
+        originalPuzzle = puzzle.map(r => r.slice()); // Store for locking logic
+        document.querySelectorAll("input").forEach(input => {
+            if(input.value) {
+                input.classList.add("locked");
+                input.readOnly = true;
+            }
+        });
+        showMessage(`New ${["Easy", "Medium", "Hard", "Expert", "Master"][difficulty-1]} puzzle generated!`, "success");
+    }, 50);
+}
+
+function generateFullGrid() {
+    const grid = Array(9).fill().map(() => Array(9).fill(0));
+    
+    function fill(g) {
+        const empty = findEmptyCell(g);
+        if (!empty) return true;
+        
+        const [row, col] = empty;
+        const nums = [1,2,3,4,5,6,7,8,9];
+        // Shuffle for randomness
+        for (let i = nums.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [nums[i], nums[j]] = [nums[j], nums[i]];
+        }
+        
+        for(const num of nums) {
+            if(isValidPlacement(g, row, col, num)) {
+                g[row][col] = num;
+                if(fill(g)) return true;
+                g[row][col] = 0;
+            }
+        }
+        return false;
+    }
+    
+    return fill(grid) ? grid : null;
+}
+
+function removeCells(fullGrid, count) {
+    const grid = fullGrid.map(r => r.slice());
+    let attempts = count;
+    let removed = 0;
+    
+    // Random positions
+    const positions = [];
+    for(let r=0; r<9; r++) for(let c=0; c<9; c++) positions.push([r,c]);
+    // Shuffle positions
+    for (let i = positions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [positions[i], positions[j]] = [positions[j], positions[i]];
+    }
+    
+    for(const [r, c] of positions) {
+        if(removed >= count) break;
+        
+        const backup = grid[r][c];
+        grid[r][c] = 0;
+        
+        // Quick check: does it still have unique solution?
+        // We use our solver. We need strictly 1 solution. 
+        // Our solver returns the first one. If we ask for 2 and get 2, it's ambiguous.
+        const sols = solvePuzzle(grid, true, 2);
+        if(sols && sols.length === 1) {
+            removed++;
+        } else {
+            // Put it back
+            grid[r][c] = backup;
+        }
+    }
+    
+    if(removed < count) {
+         console.warn(`Could not remove requested ${count}, only managed ${removed}`);
+    }
+    return grid;
+}
+
+function findEmptyCell(grid) {
+    for(let i=0; i<9; i++)
+        for(let j=0; j<9; j++)
+            if(grid[i][j]===0) return [i,j];
+    return null;
 }
 
 // --- Solver Algorithms (Backtracking) ---
